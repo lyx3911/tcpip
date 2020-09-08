@@ -6,7 +6,8 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
 
-#define BUF_SIZE 100
+//short buf_size
+#define BUF_SIZE 4 
 #define EPOLL_SIZE 50
 
 void error_handling(char *message);
@@ -39,7 +40,8 @@ int main(int argc, char*argv[])
     epfd = epoll_create(EPOLL_SIZE);
     ep_events = malloc((sizeof(struct epoll_event))*EPOLL_SIZE);
 
-    event.events = EPOLLIN;
+    // event.events = EPOLLIN; //条件触发
+    event.events = EPOLLIN|EPOLLET; //边缘触发
     event.data.fd = serv_sock;
     epoll_ctl(epfd,EPOLL_CTL_ADD, serv_sock, &event);
 
@@ -52,11 +54,14 @@ int main(int argc, char*argv[])
             break;
         }
 
+        puts("return epoll_wait");
+
         for(int i=0;i<event_cnt;i++){
             if( ep_events[i].data.fd==serv_sock ){
                 adr_sz = sizeof(clnt_adr);
                 clnt_sock = accept(serv_sock, (struct sockaddr*)&clnt_adr, &adr_sz);
-                event.events = EPOLLIN;
+                // event.events = EPOLLIN;
+                event.events = EPOLLIN|EPOLLET;
                 event.data.fd = clnt_sock;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, clnt_sock, &event);
                 printf("connected client: %d \n", clnt_sock);
@@ -69,7 +74,7 @@ int main(int argc, char*argv[])
                     printf("closed client: %d \n", ep_events[i].data.fd);
                 }
                 else{
-                    write(ep_events[i].data.fd, buf, str_len); //echo
+                    write(ep_events[i].data.fd, buf, str_len);
                 }
             }
         }
